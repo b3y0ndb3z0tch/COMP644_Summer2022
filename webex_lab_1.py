@@ -1,64 +1,52 @@
 
-import json
+# session 06-23-22
+
 import requests
+import json
 
 from mod_read_write import read_token
+from mod_read_write import read_plain_text_file
 from mod_read_write import write_plain_text_file
 
-# i found that you have to strip the trailing newline or the auto token is invalid
-# i added an rstrip()
+#get the token from a file
 
-TOKEN_FILENAME = input("What is the name of your API TOKEN file? ")
+TOKEN_FILENAME = input ("What is the name of your API TOKEN file? " )
+
 TOKEN = read_token(TOKEN_FILENAME).rstrip('\n')
 
-#configure the HTTP header request parameters for the api call
+HEADERS = 'Bearer '+ TOKEN
 
-HEADERS = "Bearer " + TOKEN
+#content-type is the encoding http request payload header
+CONTENT_TYPE = "application/json"
 
-# create the end point
+#create the body parameter
+
+#New room title
+ROOM_TITLE = input("What is the title of your new room? " )
+BODY = json.dumps({
+    "title": ROOM_TITLE,
+    "isLocked": True
+})
 
 URI = "https://webexapis.com/v1/rooms"
 
-# call the request
+resp = requests.post(URI, \
+headers={
+    "Authorization" :HEADERS,
+    "Content-Type": CONTENT_TYPE
+    }, data=BODY)
 
-resp = requests.get(URI, headers={"Authorization":HEADERS})
+print (f'HTTP Response Code {resp.status_code}' )
+print ("*"*20)
 
-# was the call successful
-if resp.status_code != 200:
-    print("Houston we have a problem")
-    print(resp.status_code)
-
-# call was successful
-else:
+if resp.status_code > 199 or resp.status_code < 300:
+#a successful api call has completed
     json_code = resp.json()
-    print(json_code)
-
-    # find information about a particular room
-    ROOMID = "" # stores the room id
-    ROOM_TO_FIND = input("What WebEx Room Id should be discovered? ")
-    # "DevNet Summer 2022 T/Th"
-
-    # walk the collection of rooms
-    items = json_code["items"]
-    for item in items:
-        # print(item["id"])
-        # print(item["title"])
-
-        # was a match made
-        if item["title"] == ROOM_TO_FIND:
-
-            # found a matching room
-            print("*** ROOM ***")
-            print(item["title"])
-
-            # the room id will be used later
-            ROOMID = item["id"]
-            ROOM_ID_FILE = input("What would you like to name your roomid file? ")
-            write_plain_text_file(ROOM_ID_FILE, ROOMID)
-            print(ROOMID)
-            print("*"*20)
-
-            break
-            print("*"*20)
-    else:
-        print(f'No room was matched to {ROOM_TO_FIND}')
+    ROOMID = json_code["id"]
+    FILENAME = input ("What would you like your new roomId file saved as? ")
+    write_plain_text_file(FILENAME, ROOMID)
+    print (f'Your roomId is has been written to: {FILENAME}')
+else:
+    #api call failed
+    print ("Houston we have a problem")
+    print(resp.text)
